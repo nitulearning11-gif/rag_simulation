@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RAG Simulator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+
+body{
+font-family: Inter, system-ui;
+background:#0f172a;
+color:#e2e8f0;
+margin:0;
+padding:40px;
+}
+
+.container{
+max-width:1000px;
+margin:auto;
+}
+
+h1{
+text-align:center;
+margin-bottom:30px;
+}
+
+.card{
+background:#1e293b;
+border-radius:14px;
+padding:20px;
+margin-bottom:20px;
+box-shadow:0 10px 20px rgba(0,0,0,0.4);
+}
+
+.step{
+margin-top:10px;
+padding:10px;
+background:#0f172a;
+border-radius:8px;
+font-size:14px;
+}
+
+button{
+background:#6366f1;
+border:none;
+padding:12px 20px;
+border-radius:10px;
+color:white;
+font-weight:600;
+cursor:pointer;
+margin-top:10px;
+}
+
+button:hover{
+background:#4f46e5;
+}
+
+input{
+width:100%;
+padding:12px;
+border-radius:10px;
+border:none;
+margin-top:10px;
+background:#0f172a;
+color:white;
+}
+
+.doc{
+background:#020617;
+padding:10px;
+border-radius:6px;
+margin-top:6px;
+}
+
+.highlight{
+border:1px solid #6366f1;
+}
+
+.vector{
+font-family:monospace;
+color:#67e8f9;
+font-size:13px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>RAG Simulator</h1>
+
+<div class="card">
+<h3>1️⃣ Ask a Question</h3>
+<input id="query" placeholder="Example: What is vector search?">
+<button onclick="runRAG()">Run RAG Pipeline</button>
+</div>
+
+<div class="card">
+<h3>📚 Knowledge Base</h3>
+<div id="docs"></div>
+</div>
+
+<div class="card">
+<h3>2️⃣ Query Embedding</h3>
+<div id="embedding" class="vector"></div>
+</div>
+
+<div class="card">
+<h3>3️⃣ Vector Similarity Search</h3>
+<div id="similarity"></div>
+</div>
+
+<div class="card">
+<h3>4️⃣ Retrieved Context</h3>
+<div id="context"></div>
+</div>
+
+<div class="card">
+<h3>5️⃣ Prompt sent to LLM</h3>
+<div id="prompt"></div>
+</div>
+
+<div class="card">
+<h3>6️⃣ Generated Answer</h3>
+<div id="answer"></div>
+</div>
+
+</div>
+
+<script>
+
+const documents = [
+
+{
+text:"Vector databases store embeddings and allow semantic search.",
+vector:[0.9,0.1,0.3,0.7]
+},
+
+{
+text:"RAG stands for Retrieval Augmented Generation and improves LLM accuracy.",
+vector:[0.8,0.4,0.2,0.6]
+},
+
+{
+text:"Embeddings convert text into numerical vectors used for similarity comparison.",
+vector:[0.7,0.2,0.9,0.3]
+},
+
+{
+text:"Large Language Models generate text based on prompts and context.",
+vector:[0.6,0.7,0.1,0.5]
+}
+
+]
+
+function renderDocs(){
+
+const docsDiv = document.getElementById("docs")
+
+docsDiv.innerHTML=""
+
+documents.forEach((doc,i)=>{
+
+const div=document.createElement("div")
+div.className="doc"
+div.id="doc"+i
+div.innerHTML=doc.text
+
+docsDiv.appendChild(div)
+
+})
+
+}
+
+renderDocs()
+
+function fakeEmbedding(text){
+
+let vec=[0,0,0,0]
+
+for(let i=0;i<text.length;i++){
+
+vec[i%4]+=text.charCodeAt(i)%10
+
+}
+
+return vec.map(v=>v/100)
+
+}
+
+function cosine(a,b){
+
+let dot=0
+let magA=0
+let magB=0
+
+for(let i=0;i<a.length;i++){
+
+dot+=a[i]*b[i]
+magA+=a[i]*a[i]
+magB+=b[i]*b[i]
+
+}
+
+magA=Math.sqrt(magA)
+magB=Math.sqrt(magB)
+
+return dot/(magA*magB)
+
+}
+
+function runRAG(){
+
+const query=document.getElementById("query").value
+
+const qVector=fakeEmbedding(query)
+
+document.getElementById("embedding").innerText=
+JSON.stringify(qVector)
+
+let scores=[]
+
+documents.forEach((doc,i)=>{
+
+const score=cosine(qVector,doc.vector)
+
+scores.push({i,score})
+
+})
+
+scores.sort((a,b)=>b.score-a.score)
+
+const top=scores[0]
+
+const retrieved=documents[top.i].text
+
+document.querySelectorAll(".doc").forEach(d=>d.classList.remove("highlight"))
+document.getElementById("doc"+top.i).classList.add("highlight")
+
+document.getElementById("similarity").innerHTML=
+"Top similarity score: "+top.score.toFixed(3)
+
+document.getElementById("context").innerText=retrieved
+
+const prompt=`
+
+Answer the question using the context.
+
+Context:
+${retrieved}
+
+Question:
+${query}
+
+`
+
+document.getElementById("prompt").innerText=prompt
+
+const answer="Based on retrieved knowledge: "+retrieved
+
+document.getElementById("answer").innerText=answer
+
+}
+
+</script>
+
+</body>
+</html>
